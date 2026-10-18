@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kompüter qurğuları — İmtahan</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f2f3fb;color:#20213a}
+header{background:#5546d8;color:white;padding:25px 16px;text-align:center}
+header h1{margin:0 0 8px;font-size:25px}
+header p{margin:5px}
+main{max-width:850px;margin:22px auto;padding:0 14px}
+.panel,.question{background:white;border-radius:15px;padding:20px;margin-bottom:16px;box-shadow:0 4px 16px #20213a0c}
+.progress{height:8px;background:#e4e3f4;border-radius:8px;overflow:hidden;margin:14px 0}
+#bar{height:100%;width:0;background:#5546d8;transition:.2s}
+.question h3{font-size:18px;line-height:1.5;margin-top:0}
+.option{display:block;width:100%;text-align:left;padding:13px 15px;margin:9px 0;border:1px solid #deddf0;background:white;border-radius:10px;font-size:15px;cursor:pointer;color:#20213a}
+.option:hover:not(:disabled){border-color:#5546d8;background:#f6f5ff}
+.option:disabled{cursor:default}
+.option.correct{background:#e0f7e9;border-color:#239653}
+.option.wrong{background:#ffebeb;border-color:#d33}
+.feedback{margin-top:12px;font-weight:bold;line-height:1.5}
+button.primary{border:0;border-radius:10px;padding:13px 20px;background:#5546d8;color:white;font-size:16px;cursor:pointer}
+button:disabled{opacity:.5}
+.small{color:#666781;font-size:14px}
+.hidden{display:none}
+
+/* Admin panel stilləri */
+.admin-panel{background:#20213a;color:white;border-radius:15px;padding:20px;margin-top:40px}
+.admin-table{width:100%;border-collapse:collapse;margin-top:15px}
+.admin-table th,.admin-table td{border:1px solid #deddf0;padding:10px;text-align:left;color:#20213a}
+.admin-table th{background:#f6f5ff}
+.btn-delete{background:#ffebeb;color:#d33;border:1px solid #d33;padding:5px 10px;border-radius:6px;cursor:pointer;font-weight:bold}
+.btn-delete:hover{background:#d33;color:white}
+</style>
+</head>
+<body>
+<header>
+  <h1>Kompüter qurğuları və texniki biliklər</h1>
+  <p>İmtahan sistemi</p>
+  <p>20 sual · 50 bal · Hər sual 2,5 bal</p>
+</header>
+<main>
+  <section class="panel" id="identityPanel">
+    <h2>İmtahana giriş</h2>
+    <p>Adınızı və soyadınızı daxil edin.</p>
+    <label>Ad</label><input id="firstName" style="display:block;width:100%;padding:12px;margin:7px 0 12px;border:1px solid #deddf0;border-radius:9px">
+    <label>Soyad</label><input id="lastName" style="display:block;width:100%;padding:12px;margin:7px 0 12px;border:1px solid #deddf0;border-radius:9px">
+    <button class="primary" id="beginExam" type="button">İmtahana başla</button>
+  </section>
+  <section class="panel hidden" id="examPanel">
+    <strong id="counter">Hazırlıq</strong>
+    <div class="progress"><div id="bar"></div></div>
+    <div class="small">Variant seçdikdən sonra növbəti suala keçə bilərsiniz.</div>
+  </section>
+  <section id="quiz" class="hidden"></section>
+
+  <!-- Daxili Admin Panel (Şifrə: admin4498) -->
+  <section class="admin-panel">
+    <h3>Admin İdarəetmə Paneli</h3>
+    <div id="adminAuth">
+      <p class="small" style="color:#bbb;">İştirakçıları görmək və idarə etmək üçün şifrəni daxil edin.</p>
+      <input type="password" id="adminPass" placeholder="Admin şifrəsi" style="padding:10px; border-radius:8px; border:1px solid #ccc; width:200px; margin-right:10px;">
+      <button class="primary" type="button" onclick="checkAdminPassword()">Daxil ol</button>
+    </div>
+    <div id="adminContent" class="hidden">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h4 style="margin:0;">İmtahanda İştirak Edənlər</h4>
+        <button class="primary" type="button" style="background:#d33;" onclick="logoutAdmin()">Çıxış</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="admin-table" style="background:white; border-radius:8px;">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Ad Soyad</th>
+              <th>Status / Bal</th>
+              <th>D / S</th>
+              <th>Tarix</th>
+              <th>Əməliyyat</th>
+            </tr>
+          </thead>
+          <tbody id="adminTableBody">
+            <tr><td colspan="6" style="text-align:center;">Məlumat yoxdur</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+const originalQuestions = [
+ {q:"Birinci nəsil kompüterlərin element bazası nə idi?",a:"Elektron lampalar",o:["Tranzistorlar","İnteqral sxemlər","Mikroprosessorlar"]},
+ {q:"İkinci nəsil kompüterlərin element bazası nə idi?",a:"Tranzistorlar və diodlar",o:["Elektron lampalar","Mikroprosessorlar","Optik disklər"]},
+ {q:"Üçüncü nəsil kompüterlərin element bazası nə idi?",a:"İnteqral sxemlər və mikroelektronika elementləri",o:["Yalnız elektron lampalar","Mexaniki relelər","Yalnız vakuum boruları"]},
+ {q:"Siçan işləmədikdə ilk növbədə nəyi yoxlamaq məqsədəuyğundur?",a:"Qoşulmanı, USB portunu və batareyanı",o:["BIOS-u yenidən yazmağı","Prosessoru dəyişməyi","Monitorun parlaqlığını artırmağı"]},
+ {q:"Siçan drayverinin köhnə olub-olmadığını yoxlamaq üçün hansı proqramdan istifadə etmək olar?",a:"Driver Booster",o:["Paint","Notepad","Calculator"]},
+ {q:"Monitoru birbaşa görüntü üçün qoşmaq mümkün olmayan port hansıdır?",a:"LAN (RJ-45) şəbəkə portu",o:["HDMI","DisplayPort","VGA"]},
+ {q:"Aşağıdakılardan hansı monitor üçün adətən zərərli amil hesab edilmir?",a:"Normal otaq temperaturunda istifadə",o:["Maye tökülməsi","Güclü zərbə","Həddindən artıq istilik"]},
+ {q:"Monitorun ekranında “No Signal” yazılırsa, ilk növbədə nə etmək lazımdır?",a:"Monitorla sistem bloku arasındakı kabeli və qoşulmanı yoxlamaq",o:["CMOS batareyasını dərhal çıxarmaq","Klaviaturanı dəyişmək","Səs səviyyəsini artırmaq"]},
+ {q:"Sistem blokunun daxilində hansı qurğular yerləşir?",a:"CPU, RAM, ana plata, qida bloku və yaddaş qurğuları",o:["Yalnız monitor və printer","Yalnız siçan və klaviatura","Yalnız skaner və dinamiklər"]},
+ {q:"Hansı qurğu daxili yaddaş qurğusu deyil?",a:"USB fləş-kart kimi xarici yaddaş qurğusu",o:["Daxili SSD","Daxili HDD","RAM"]},
+ {q:"Kompüter söndürüldükdə məlumatı itirən operativ yaddaş hansıdır?",a:"RAM",o:["SSD","HDD","DVD-ROM"]},
+ {q:"Aşağıdakılardan hansı çıxış qurğusudur?",a:"Monitor",o:["Klaviatura","Siçan","Mikrofon"]},
+ {q:"Aşağıdakılardan hansı BIOS-un funksiyasına aid deyil?",a:"Mətn sənədlərini redaktə etmək",o:["Avadanlıqların ilkin yoxlanışını başlatmaq","Yüklənmə prosesinə kömək etmək","Aparat parametrlərini saxlamaq"]},
+ {q:"Bəzi BIOS sistemlərində bir uzun və bir qısa siqnal hansı problemi göstərə bilər?",a:"RAM ilə bağlı problem",o:["Printerdə kağız bitməsini","Siçanın batareyasının dolu olmasını","Monitorun parlaqlığını"]},
+ {q:"CMOS batareyasının əsas vəzifəsi nədir?",a:"Sistem saatını və BIOS/UEFI parametrlərini saxlamağa kömək etmək",o:["RAM-ı soyutmaq","Monitoru enerji ilə təmin etmək","İnterneti sürətləndirmək"]},
+ {q:"POST zamanı aşkarlanan məlumat istifadəçiyə hansı üsulla göstərilə bilər?",a:"Ekranda mətn mesajı və ya diaqnostik siqnallarla",o:["Yalnız printerdə çap etməklə","Yalnız internet vasitəsilə","Yalnız səs faylı kimi"]},
+ {q:"Aşağıdakılardan hansı kompüterin periferik qurğusu deyil?",a:"Mərkəzi prosessor (CPU)",o:["Printer","Skaner","Xarici veb-kamera"]},
+ {q:"Aşağıdakılardan hansı standart sistem qısayolu deyil?",a:"Ekranın fiziki düyməsini basmaq",o:["Ctrl+C — kopyalamaq","Ctrl+V — yapışdırmaq","Alt+Tab — pəncərələr arasında keçmək"]},
+ {q:"Ana lövhənin əsas funksiyası hansıdır?",a:"Kompüterin əsas qurğularını birləşdirmək və onların əlaqəsini təmin etmək",o:["Yalnız sənədləri çap etmək","Yalnız səsi gücləndirmək","Yalnız internet səhifələrini açmaq"]},
+ {q:"Şimal körpüsü (Northbridge) klassik kompüter arxitekturasında hansı qurğular arasında əlaqə yaradırdı?",a:"CPU, RAM və qrafik qurğu arasında",o:["Printer, skaner və dinamik arasında","Siçan, klaviatura və mikrofon arasında","Qida bloku və korpus düyməsi arasında"]}
+];
+
+let questions=[], index=0, correct=0, locked=false, wrongAnswers=0;
+let participant={id:"", firstName:"", lastName:""};
+
+document.getElementById("beginExam").addEventListener("click",function(){
+  const firstName=document.getElementById("firstName").value.trim();
+  const lastName=document.getElementById("lastName").value.trim();
+  if(!firstName||!lastName){alert("Adınızı və soyadınızı daxil edin.");return;}
+  
+  participant.id = "id_" + Date.now();
+  participant.firstName = firstName;
+  participant.lastName = lastName;
+
+  saveResultLocally({
+    id: participant.id,
+    firstName: participant.firstName,
+    lastName: participant.lastName,
+    score: "İmtahandadır...",
+    correct: "-",
+    wrong: "-",
+    createdAt: new Date().toLocaleString("az-AZ")
+  });
+
+  document.getElementById("identityPanel").classList.add("hidden");
+  document.getElementById("examPanel").classList.remove("hidden");
+  startExam();
+});
+
+function shuffle(arr){
+ const a=[...arr];
+ for(let i=a.length-1;i>0;i--){
+  const j=Math.floor(Math.random()*(i+1));
+  [a[i],a[j]]=[a[j],a[i]];
+ }
+ return a;
+}
+
+function startExam(){
+ questions=shuffle(originalQuestions).map(item=>({
+  ...item, options:shuffle([item.a,...item.o])
+ }));
+ index=0;correct=0;wrongAnswers=0;locked=false;
+ document.getElementById("quiz").classList.remove("hidden");
+ renderQuestion();
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function renderQuestion(){
+ locked=false;
+ const q=questions[index];
+ document.getElementById("counter").textContent=`Sual ${index+1} / ${questions.length}`;
+ document.getElementById("bar").style.width=`${index/questions.length*100}%`;
+
+ const section=document.getElementById("quiz");
+ section.innerHTML="";
+ const card=document.createElement("div");
+ card.className="question";
+ const title=document.createElement("h3");
+ title.textContent=`${index+1}. ${q.q}`;
+ card.appendChild(title);
+
+ q.options.forEach(option=>{
+  const btn=document.createElement("button");
+  btn.className="option";
+  btn.type="button";
+  btn.textContent=option;
+  btn.onclick=()=>chooseAnswer(btn,option,q,card);
+  card.appendChild(btn);
+ });
+
+ const feedback=document.createElement("div");
+ feedback.className="feedback";
+ feedback.id="feedback";
+ card.appendChild(feedback);
+
+ const next=document.createElement("button");
+ next.className="primary";
+ next.type="button";
+ next.textContent=index===questions.length-1?"İmtahanı bitir":"Növbəti sual";
+ next.disabled=true;
+ next.id="next";
+ next.onclick=()=>{
+  index++;
+  if(index<questions.length)renderQuestion();
+  else finishExam();
+ };
+ card.appendChild(document.createElement("br"));
+ card.appendChild(document.createElement("br"));
+ card.appendChild(next);
+ section.appendChild(card);
+}
+
+function chooseAnswer(btn,option,q,card){
+ if(locked)return;
+ locked=true;
+ const buttons=card.querySelectorAll(".option");
+ buttons.forEach(b=>{
+  b.disabled=true;
+  if(b.textContent===q.a)b.classList.add("correct");
+ });
+ const feedback=card.querySelector("#feedback");
+ if(option===q.a){
+  correct++;
+  feedback.textContent="✓ Düzgün cavab!";
+  feedback.style.color="#19864b";
+ }else{
+  wrongAnswers++;
+  btn.classList.add("wrong");
+  feedback.textContent="✗ Səhv cavab. Düzgün cavab: "+q.a;
+  feedback.style.color="#c62828";
+ }
+ document.getElementById("bar").style.width=`${(index+1)/questions.length*100}%`;
+ document.getElementById("next").disabled=false;
+}
+
+function finishExam(){
+ const points=correct*2.5;
+ 
+ updateResultLocally({
+   id: participant.id,
+   firstName: participant.firstName,
+   lastName: participant.lastName,
+   score: Number(points.toFixed(1)) + " Bal",
+   correct: correct,
+   wrong: wrongAnswers,
+   createdAt: new Date().toLocaleString("az-AZ")
+ });
+
+ alert("İmtahan uğurla başa çatdı!");
+ location.reload();
+}
+
+function getStoredResults() {
+  return JSON.parse(localStorage.getItem("examResults") || "[]");
+}
+
+function saveResultLocally(data) {
+  const list = getStoredResults();
+  list.push(data);
+  localStorage.setItem("examResults", JSON.stringify(list));
+}
+
+function updateResultLocally(data) {
+  let list = getStoredResults();
+  const index = list.findIndex(item => item.id === data.id);
+  if(index !== -1) {
+    list[index] = data;
+  } else {
+    list.push(data);
+  }
+  localStorage.setItem("examResults", JSON.stringify(list));
+}
+
+function checkAdminPassword() {
+  const pass = document.getElementById("adminPass").value;
+  if(pass === "admin4498") {
+    document.getElementById("adminAuth").classList.add("hidden");
+    document.getElementById("adminContent").classList.remove("hidden");
+    loadAdminTable();
+  } else {
+    alert("Yanlış şifrə!");
+  }
+}
+
+function logoutAdmin() {
+  document.getElementById("adminAuth").classList.remove("hidden");
+  document.getElementById("adminContent").classList.add("hidden");
+  document.getElementById("adminPass").value = "";
+}
+
+function loadAdminTable() {
+  const list = getStoredResults();
+  const tbody = document.getElementById("adminTableBody");
+  if(list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Hələ heç bir iştirakçı yoxdur.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = "";
+  list.reverse().forEach((item, index) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${index + 1}</td>
+      <td><strong>${item.firstName} ${item.lastName}</strong></td>
+      <td><span style="color:#5546d8; font-weight:bold;">${item.score}</span></td>
+      <td>${item.correct} / ${item.wrong}</td>
+      <td>${item.createdAt}</td>
+      <td><button class="btn-delete" type="button" onclick="deleteParticipant('${item.id}')">Çıxart</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function deleteParticipant(id) {
+  if(confirm("Bu iştirakçını siyahıdan silmək istədiyinizə əminsiniz?")) {
+    let list = getStoredResults();
+    list = list.filter(item => item.id !== id);
+    localStorage.setItem("examResults", JSON.stringify(list));
+    loadAdminTable();
+  }
+}
+</script>
+</body>
+</html>
